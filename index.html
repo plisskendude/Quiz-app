@@ -95,7 +95,7 @@
       }
     }
 
-    // Save score with total questions
+    // Save score along with total questions
     function saveScore(name, score) {
       const leaderboardKey = 'quizLeaderboard';
       const leaderboard = JSON.parse(localStorage.getItem(leaderboardKey)) || [];
@@ -114,8 +114,7 @@
         .forEach(entry => {
           const li = document.createElement('li');
           const date = new Date(entry.timestamp);
-          const answerText = entry.score === 1 ? 'answer' : 'answers'; // Pluralization
-          li.textContent = `${entry.name} - ${entry.score} Correct ${answerText} out of ${entry.total} (${date.toLocaleString()})`;
+          li.textContent = `${entry.name} - ${entry.score} Correct answer${entry.score!==1?'s':''} out of ${entry.total} (${date.toLocaleString()})`;
           if(entry.timestamp === latestAttemptTimestamp){
             li.classList.add('highlight');
           }
