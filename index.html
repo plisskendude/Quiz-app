@@ -55,6 +55,8 @@
       <p id="finalScore"></p>
       <h2>Leaderboard</h2>
       <ol id="leaderboard"></ol>
+      <button id="resetLeaderboardBtn" style="margin-top: 10px; background-color:#dc3545;">Reset Leaderboard</button>
+      <br>
       <button id="playAgainBtn">Play Again</button>
     </div>
   </div>
@@ -84,6 +86,7 @@
     const resultDiv = document.getElementById('result');
     const finalScoreEl = document.getElementById('finalScore');
     const playAgainBtn = document.getElementById('playAgainBtn');
+    const resetLeaderboardBtn = document.getElementById('resetLeaderboardBtn');
 
     function shuffleArray(arr) {
       for (let i = arr.length - 1; i > 0; i--) {
@@ -92,12 +95,13 @@
       }
     }
 
+    // Save score with total questions
     function saveScore(name, score) {
       const leaderboardKey = 'quizLeaderboard';
       const leaderboard = JSON.parse(localStorage.getItem(leaderboardKey)) || [];
       const timestamp = Date.now();
       latestAttemptTimestamp = timestamp;
-      leaderboard.push({name, score, timestamp});
+      leaderboard.push({name, score, total: questions.length, timestamp});
       localStorage.setItem(leaderboardKey, JSON.stringify(leaderboard));
     }
 
@@ -110,7 +114,8 @@
         .forEach(entry => {
           const li = document.createElement('li');
           const date = new Date(entry.timestamp);
-          li.textContent = `${entry.name} - ${entry.score} (${date.toLocaleString()})`;
+          const answerText = entry.score === 1 ? 'answer' : 'answers'; // Pluralization
+          li.textContent = `${entry.name} - ${entry.score} Correct ${answerText} out of ${entry.total} (${date.toLocaleString()})`;
           if(entry.timestamp === latestAttemptTimestamp){
             li.classList.add('highlight');
           }
@@ -165,6 +170,14 @@
       questionContainer.classList.remove('hidden');
       feedbackEl.textContent = '';
       startQuiz();
+    });
+
+    resetLeaderboardBtn.addEventListener('click', () => {
+      if(confirm('Are you sure you want to reset the leaderboard? This cannot be undone.')) {
+        localStorage.removeItem('quizLeaderboard');
+        showLeaderboard();
+        alert('Leaderboard has been reset.');
+      }
     });
 
     function startQuiz() {
