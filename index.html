@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Quiz App with Sounds and Timer Bar</title>
+  <title>Timed Quiz App with Leaderboard</title>
   <style>
     body { font-family: Arial, sans-serif; background: #f4f4f9; padding: 20px; text-align: center; }
     .card { background: white; padding: 20px; border-radius: 12px; max-width: 600px; margin: auto; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
@@ -23,15 +23,14 @@
     .gold { color: gold; font-weight: bold; }
     .silver { color: silver; font-weight: bold; }
     .bronze { color: #cd7f32; font-weight: bold; }
-    #progress { font-weight: bold; margin-bottom: 5px; }
+    #progress { font-weight: bold; margin-bottom: 10px; }
     #scoreDisplay { font-weight: bold; margin-bottom: 5px; }
-    #timerContainer { width: 100%; background: #ddd; height: 10px; border-radius: 5px; margin-bottom: 10px; overflow: hidden; }
-    #timerBar { width: 100%; height: 100%; background: #dc3545; transition: width 1s linear; }
+    #timer { font-weight: bold; color: #dc3545; }
   </style>
 </head>
 <body>
   <div class="card">
-    <h1>Quiz App with Sounds and Timer Bar</h1>
+    <h1>Timed Quiz App with Leaderboard</h1>
 
     <div id="editor">
       <h2>Create a Question</h2>
@@ -51,7 +50,7 @@
       <div id="questionContainer" class="hidden">
         <p id="scoreDisplay">Score: 0 / 0</p>
         <p id="progress"></p>
-        <div id="timerContainer"><div id="timerBar"></div></div>
+        <p id="timer"></p>
         <p id="question"></p>
         <div id="options" class="options"></div>
         <div class="feedback" id="feedback"></div>
@@ -69,10 +68,6 @@
       <button id="playAgainBtn">Play Again</button>
     </div>
   </div>
-
-  <!-- Sound effects -->
-  <audio id="correctSound" src="https://freesound.org/data/previews/320/320654_5260876-lq.mp3"></audio>
-  <audio id="wrongSound" src="https://freesound.org/data/previews/320/320655_5260876-lq.mp3"></audio>
 
   <script>
     let questions = [];
@@ -96,7 +91,7 @@
     const questionContainer = document.getElementById('questionContainer');
     const progressEl = document.getElementById('progress');
     const scoreDisplay = document.getElementById('scoreDisplay');
-    const timerBar = document.getElementById('timerBar');
+    const timerEl = document.getElementById('timer');
     const questionEl = document.getElementById('question');
     const optionsDiv = document.getElementById('options');
     const nextBtn = document.getElementById('next');
@@ -105,9 +100,6 @@
     const finalScoreEl = document.getElementById('finalScore');
     const playAgainBtn = document.getElementById('playAgainBtn');
     const resetLeaderboardBtn = document.getElementById('resetLeaderboardBtn');
-
-    const correctSound = document.getElementById('correctSound');
-    const wrongSound = document.getElementById('wrongSound');
 
     function shuffleArray(arr) {
       for (let i = arr.length - 1; i > 0; i--) {
@@ -210,11 +202,11 @@
 
     function startTimer(callback) {
       let timeLeft = timePerQuestion;
-      timerBar.style.width = '100%';
+      timerEl.textContent = `Time: ${timeLeft}s`;
       clearInterval(timerInterval);
       timerInterval = setInterval(() => {
         timeLeft--;
-        timerBar.style.width = `${(timeLeft/timePerQuestion)*100}%`;
+        timerEl.textContent = `Time: ${timeLeft}s`;
         if(timeLeft <= 0){
           clearInterval(timerInterval);
           callback();
@@ -239,7 +231,9 @@
         optionsDiv.appendChild(btn);
       });
       nextBtn.classList.add('hidden');
-      startTimer(() => selectAnswer(null, q.answer, null, false));
+
+      // Start timer for this question
+      startTimer(() => selectAnswer(null, q.answer, null, false)); // Auto wrong if time runs out
     }
 
     function selectAnswer(selected, correct, btn, manual=true) {
@@ -250,12 +244,11 @@
         if(manual) score++;
         feedbackEl.textContent = '✅ Correct!';
         if(btn) btn.classList.add('correct');
-        correctSound.play();
       } else {
         feedbackEl.textContent = selected===null ? `⏰ Time's up! Correct: ${correct}` : `❌ Wrong! Correct: ${correct}`;
         if(btn) btn.classList.add('wrong');
+        // Highlight correct answer
         buttons.forEach(b => { if(b.textContent === correct) b.classList.add('correct'); });
-        wrongSound.play();
       }
       scoreDisplay.textContent = `Score: ${score} / ${questions.length}`;
       nextBtn.classList.remove('hidden');
