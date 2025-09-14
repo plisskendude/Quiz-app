@@ -11,17 +11,19 @@
     input, button { margin: 8px 0; padding: 8px; font-size: 16px; }
     button { border: none; border-radius: 8px; background: #007BFF; color: white; cursor: pointer; }
     button:hover { background: #0056b3; }
-    .options { margin: 10px 0; }
+    .options { margin: 10px 0; display: flex; flex-direction: column; gap: 8px; }
     .hidden { display: none; }
     .option-input { display: block; margin-bottom: 5px; }
     #shareLink { width: 100%; }
     #leaderboard { margin-top: 15px; text-align: left; }
+    .feedback { font-weight: bold; margin: 10px 0; }
   </style>
 </head>
 <body>
   <div class="card">
     <h1>Shareable Quiz App with Leaderboard</h1>
 
+    <!-- Editor for creating questions -->
     <div id="editor">
       <h2>Create a Question</h2>
       <input type="text" id="questionText" placeholder="Enter question"><br>
@@ -35,13 +37,21 @@
       <input type="text" id="shareLink" readonly placeholder="Your shareable link will appear here">
     </div>
 
+    <!-- Quiz view -->
     <div id="quiz" class="hidden">
-      <p id="question"></p>
-      <div id="options" class="options"></div>
-      <button id="next">Next</button>
+      <button id="startQuizBtn">Start Quiz</button>
+      <div id="questionContainer" class="hidden">
+        <p id="question"></p>
+        <div id="options" class="options"></div>
+        <div class="feedback" id="feedback"></div>
+        <button id="next" class="hidden">Next</button>
+      </div>
     </div>
 
+    <!-- Result view -->
     <div id="result" class="hidden">
+      <h2>Final Score</h2>
+      <p id="finalScore"></p>
       <h2>Leaderboard</h2>
       <ol id="leaderboard"></ol>
     </div>
@@ -51,6 +61,7 @@
     let questions = [];
     let currentIndex = 0;
     let score = 0;
+    let leaderboardEl = document.getElementById('leaderboard');
 
     const addBtn = document.getElementById('addQuestion');
     const generateLinkBtn = document.getElementById('generateLink');
@@ -59,12 +70,16 @@
     const correctAnswerInput = document.getElementById('correctAnswer');
     const shareLinkInput = document.getElementById('shareLink');
 
+    const editorDiv = document.getElementById('editor');
     const quizDiv = document.getElementById('quiz');
+    const startQuizBtn = document.getElementById('startQuizBtn');
+    const questionContainer = document.getElementById('questionContainer');
     const questionEl = document.getElementById('question');
     const optionsDiv = document.getElementById('options');
     const nextBtn = document.getElementById('next');
+    const feedbackEl = document.getElementById('feedback');
     const resultDiv = document.getElementById('result');
-    const leaderboardEl = document.getElementById('leaderboard');
+    const finalScoreEl = document.getElementById('finalScore');
 
     function shuffleArray(arr) {
       for (let i = arr.length - 1; i > 0; i--) {
@@ -79,12 +94,11 @@
       leaderboard.push({name, score});
       leaderboard.sort((a, b) => b.score - a.score);
       localStorage.setItem(leaderboardKey, JSON.stringify(leaderboard));
-      showLeaderboard();
     }
 
     function showLeaderboard() {
-      const leaderboard = JSON.parse(localStorage.getItem('quizLeaderboard')) || [];
       leaderboardEl.innerHTML = '';
+      const leaderboard = JSON.parse(localStorage.getItem('quizLeaderboard')) || [];
       leaderboard.slice(0, 10).forEach(entry => {
         const li = document.createElement('li');
         li.textContent = `${entry.name} - ${entry.score}`;
@@ -92,22 +106,30 @@
       });
     }
 
-    // Load quiz from URL if present
+    // Load quiz from URL
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.has('quiz')) {
       const encoded = urlParams.get('quiz');
       try {
         questions = JSON.parse(decodeURIComponent(atob(encoded)));
-        shuffleArray(questions); // Randomize question order
-        startQuiz();
-      } catch (e) { console.error('Invalid quiz data'); }
+        shuffleArray(questions);
+        editorDiv.classList.add('hidden'); // hide editor for players
+        quizDiv.classList.remove('hidden'); // show quiz container
+        startQuizBtn.classList.remove('hidden'); // show start button
+      } catch (e) {
+        console.error('Invalid quiz data');
+      }
     }
 
+    // Editor: add question
     addBtn.addEventListener('click', () => {
       const question = questionText.value.trim();
       const options = Array.from(optionInputs).map(input => input.value.trim());
       const answer = correctAnswerInput.value.trim();
-      if (!question || options.some(opt => !opt) || !answer) { alert('Please fill all fields.'); return; }
+      if (!question || options.some(opt => !opt) || !answer) {
+        alert('Please fill all fields.');
+        return;
+      }
       questions.push({question, options, answer});
       questionText.value = '';
       optionInputs.forEach(input => input.value = '');
@@ -115,6 +137,7 @@
       alert('Question added! Total questions: ' + questions.length);
     });
 
+    // Editor: generate link
     generateLinkBtn.addEventListener('click', () => {
       if (questions.length === 0) { alert('Add questions first'); return; }
       const encoded = btoa(encodeURIComponent(JSON.stringify(questions)));
@@ -125,46 +148,67 @@
       alert('Shareable link copied to clipboard!');
     });
 
+    // Start quiz button
+    startQuizBtn.addEventListener('click', () => {
+      startQuizBtn.classList.add('hidden');
+      questionContainer.classList.remove('hidden');
+      startQuiz();
+    });
+
     function startQuiz() {
-      document.getElementById('editor').classList.add('hidden');
-      quizDiv.classList.remove('hidden');
       currentIndex = 0;
       score = 0;
+      feedbackEl.textContent = '';
+      nextBtn.classList.add('hidden');
       showQuestion();
     }
 
     function showQuestion() {
+      feedbackEl.textContent = '';
       const q = questions[currentIndex];
       questionEl.textContent = `Q${currentIndex+1}: ${q.question}`;
       optionsDiv.innerHTML = '';
       const shuffledOptions = [...q.options];
-      shuffleArray(shuffledOptions); // Randomize options
+      shuffleArray(shuffledOptions);
       shuffledOptions.forEach(opt => {
         const btn = document.createElement('button');
         btn.textContent = opt;
-        btn.onclick = () => selectAnswer(opt, q.answer);
+        btn.onclick = () => selectAnswer(opt, q.answer, btn);
         optionsDiv.appendChild(btn);
       });
+      nextBtn.classList.add('hidden');
     }
 
-    function selectAnswer(selected, correct) {
-      if (selected === correct) { score++; alert('✅ Correct!'); } 
-      else { alert(`❌ Wrong! Correct answer: ${correct}`); }
+    function selectAnswer(selected, correct, btn) {
+      const buttons = optionsDiv.querySelectorAll('button');
+      buttons.forEach(b => b.disabled = true);
+      if (selected === correct) {
+        score++;
+        feedbackEl.textContent = '✅ Correct!';
+        btn.style.backgroundColor = '#28a745';
+      } else {
+        feedbackEl.textContent = `❌ Wrong! Correct: ${correct}`;
+        btn.style.backgroundColor = '#dc3545';
+      }
       nextBtn.classList.remove('hidden');
     }
 
     nextBtn.addEventListener('click', () => {
       currentIndex++;
-      if (currentIndex < questions.length) { showQuestion(); nextBtn.classList.add('hidden'); } 
-      else { endQuiz(); }
+      if (currentIndex < questions.length) {
+        showQuestion();
+      } else {
+        endQuiz();
+      }
     });
 
     function endQuiz() {
-      quizDiv.classList.add('hidden');
+      questionContainer.classList.add('hidden');
       resultDiv.classList.remove('hidden');
+      finalScoreEl.textContent = `${score} / ${questions.length}`;
       const name = prompt('Enter your name for the leaderboard:');
       if (name) saveScore(name, score);
-      resultDiv.innerHTML = `<h2>Final Score: ${score}/${questions.length}</h2><h2>Leaderboard</h2><ol id='leaderboard'></ol>`;
+      leaderboardEl = document.getElementById('leaderboard');
       showLeaderboard();
     }
 
