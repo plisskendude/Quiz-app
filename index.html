@@ -1,245 +1,192 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Shareable Quiz App with Leaderboard</title>
-  <style>
-    body { font-family: Arial, sans-serif; background: #f4f4f9; padding: 20px; text-align: center; }
-    .card { background: white; padding: 20px; border-radius: 12px; max-width: 600px; margin: auto; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-    h1 { font-size: 24px; }
-    input, button { margin: 8px 0; padding: 8px; font-size: 16px; }
-    button { border: none; border-radius: 8px; background: #007BFF; color: white; cursor: pointer; }
-    button:hover { background: #0056b3; }
-    .options { margin: 10px 0; display: flex; flex-direction: column; gap: 8px; }
-    .hidden { display: none; }
-    .option-input { display: block; margin-bottom: 5px; }
-    #shareLink { width: 100%; }
-    #leaderboard { margin-top: 15px; text-align: left; }
-    .feedback { font-weight: bold; margin: 10px 0; }
-    .highlight { background-color: #fff3cd; font-weight: bold; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ultimate Quiz App</title>
+<style>
+body { font-family: Arial, sans-serif; background: #f4f4f9; padding: 20px; text-align: center; transition: 0.3s; }
+body.dark-mode { background: #222; color: #eee; }
+.card { background: white; padding: 20px; border-radius: 12px; max-width: 600px; margin: auto; box-shadow: 0 4px 10px rgba(0,0,0,0.1); transition: 0.3s; }
+body.dark-mode .card { background: #333; color: #eee; }
+h1 { font-size: 24px; }
+input, button { margin: 8px 0; padding: 8px; font-size: 16px; }
+button { border: none; border-radius: 8px; background: #007BFF; color: white; cursor: pointer; transition: 0.2s; }
+button:hover { background: #0056b3; }
+body.dark-mode button { background: #555; color: #eee; }
+.options { margin: 10px 0; display: flex; flex-direction: column; gap: 10px; }
+.hidden { display: none; }
+.option-btn { padding: 10px; font-size: 16px; border-radius: 8px; cursor: pointer; transition: 0.2s; }
+.option-btn.correct { background-color: #28a745 !important; color: white; }
+.option-btn.wrong { background-color: #dc3545 !important; color: white; }
+#shareLink { width: 100%; }
+.feedback { font-weight: bold; margin: 10px 0; }
+.highlight { background-color: #fff3cd; font-weight: bold; }
+.gold { color: gold; font-weight: bold; }
+.silver { color: silver; font-weight: bold; }
+.bronze { color: #cd7f32; font-weight: bold; }
+#progress { font-weight: bold; margin-bottom: 5px; }
+#scoreDisplay { font-weight: bold; margin-bottom: 5px; }
+#streakDisplay { font-weight: bold; font-size: 18px; color: #ff4500; margin-bottom: 5px; }
+#timerContainer { width: 100%; background: #ddd; height: 10px; border-radius: 5px; margin-bottom: 10px; overflow: hidden; }
+#timerBar { width: 100%; height: 100%; background: #dc3545; transition: width 1s linear; }
+#progressBarContainer { width: 100%; background: #ddd; height: 15px; border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
+#progressBar { width: 0%; height: 100%; background: #007BFF; transition: width 0.3s; }
+@keyframes pulse { 0% { transform: scale(1); opacity: 0.7; } 50% { transform: scale(1.3); opacity: 1; } 100% { transform: scale(1); opacity: 0.7; } }
+.streak-flame { display: inline-block; animation: pulse 0.8s infinite; }
+#confettiCanvas { position: fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:9999; }
+</style>
 </head>
 <body>
-  <div class="card">
-    <h1>Shareable Quiz App with Leaderboard</h1>
+<div class="card">
+  <h1>Ultimate Quiz App</h1>
+  <button id="toggleDarkMode">🌙 Dark Mode</button>
 
-    <!-- Editor -->
-    <div id="editor">
-      <h2>Create a Question</h2>
-      <input type="text" id="questionText" placeholder="Enter question"><br>
-      <input type="text" class="option-input" placeholder="Option 1"><br>
-      <input type="text" class="option-input" placeholder="Option 2"><br>
-      <input type="text" class="option-input" placeholder="Option 3"><br>
-      <input type="text" class="option-input" placeholder="Option 4"><br>
-      <input type="text" id="correctAnswer" placeholder="Correct answer"><br>
-      <button id="addQuestion">Add Question</button>
-      <button id="generateLink">Generate Shareable Link</button>
-      <input type="text" id="shareLink" readonly placeholder="Your shareable link will appear here">
-    </div>
+  <div id="editor">
+    <h2>Create a Question</h2>
+    <input type="text" id="questionText" placeholder="Enter question"><br>
+    <input type="text" class="option-input" placeholder="Option 1"><br>
+    <input type="text" class="option-input" placeholder="Option 2"><br>
+    <input type="text" class="option-input" placeholder="Option 3"><br>
+    <input type="text" class="option-input" placeholder="Option 4"><br>
+    <input type="text" id="correctAnswer" placeholder="Correct answer"><br>
+    <button id="addQuestion">Add Question</button>
+    <button id="generateLink">Generate Shareable Link</button>
+    <input type="text" id="shareLink" readonly placeholder="Your shareable link will appear here">
+  </div>
 
-    <!-- Quiz -->
-    <div id="quiz" class="hidden">
-      <button id="startQuizBtn">Start Quiz</button>
-      <div id="questionContainer" class="hidden">
-        <p id="question"></p>
-        <div id="options" class="options"></div>
-        <div class="feedback" id="feedback"></div>
-        <button id="next" class="hidden">Next</button>
-      </div>
-    </div>
-
-    <!-- Results -->
-    <div id="result" class="hidden">
-      <h2>Final Score</h2>
-      <p id="finalScore"></p>
-      <h2>Leaderboard</h2>
-      <ol id="leaderboard"></ol>
-      <button id="resetLeaderboardBtn" style="margin-top: 10px; background-color:#dc3545;">Reset Leaderboard</button>
-      <br>
-      <button id="playAgainBtn">Play Again</button>
+  <div id="quiz" class="hidden">
+    <button id="startQuizBtn">Start Quiz</button>
+    <div id="questionContainer" class="hidden">
+      <p id="scoreDisplay">Score: 0 / 0</p>
+      <p id="progress"></p>
+      <div id="progressBarContainer"><div id="progressBar"></div></div>
+      <div id="timerContainer"><div id="timerBar"></div></div>
+      <p id="question"></p>
+      <div id="options" class="options"></div>
+      <p id="streakDisplay">Streak: 0 🔥</p>
+      <div class="feedback" id="feedback"></div>
+      <button id="next" class="hidden">Next</button>
     </div>
   </div>
 
-  <script>
-    let questions = [];
-    let currentIndex = 0;
-    let score = 0;
-    let latestAttemptTimestamp = null;
-    let leaderboardEl = document.getElementById('leaderboard');
+  <div id="result" class="hidden">
+    <h2>Final Score</h2>
+    <p id="finalScore"></p>
+    <h2>Leaderboard</h2>
+    <ol id="leaderboard"></ol>
+    <button id="resetLeaderboardBtn" style="margin-top: 10px; background-color:#dc3545;">Reset Leaderboard</button>
+    <br>
+    <button id="playAgainBtn">Play Again</button>
+  </div>
+</div>
 
-    const addBtn = document.getElementById('addQuestion');
-    const generateLinkBtn = document.getElementById('generateLink');
-    const questionText = document.getElementById('questionText');
-    const optionInputs = document.querySelectorAll('.option-input');
-    const correctAnswerInput = document.getElementById('correctAnswer');
-    const shareLinkInput = document.getElementById('shareLink');
+<!-- Sounds -->
+<audio id="correctSound" src="https://freesound.org/data/previews/320/320654_5260876-lq.mp3"></audio>
+<audio id="wrongSound" src="https://freesound.org/data/previews/320/320655_5260876-lq.mp3"></audio>
+<audio id="celebrationSound" src="https://freesound.org/data/previews/331/331912_3248244-lq.mp3"></audio>
+<canvas id="confettiCanvas" class="hidden"></canvas>
 
-    const editorDiv = document.getElementById('editor');
-    const quizDiv = document.getElementById('quiz');
-    const startQuizBtn = document.getElementById('startQuizBtn');
-    const questionContainer = document.getElementById('questionContainer');
-    const questionEl = document.getElementById('question');
-    const optionsDiv = document.getElementById('options');
-    const nextBtn = document.getElementById('next');
-    const feedbackEl = document.getElementById('feedback');
-    const resultDiv = document.getElementById('result');
-    const finalScoreEl = document.getElementById('finalScore');
-    const playAgainBtn = document.getElementById('playAgainBtn');
-    const resetLeaderboardBtn = document.getElementById('resetLeaderboardBtn');
+<script>
+let questions=[], currentIndex=0, score=0, baseScore=0, streak=0, maxStreak=0, latestAttemptTimestamp=null, timerInterval=null;
+const timePerQuestion=15;
 
-    function shuffleArray(arr) {
-      for (let i = arr.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [arr[i], arr[j]] = [arr[j], arr[i]];
-      }
-    }
+const addBtn = document.getElementById('addQuestion');
+const generateLinkBtn = document.getElementById('generateLink');
+const questionText = document.getElementById('questionText');
+const optionInputs = document.querySelectorAll('.option-input');
+const correctAnswerInput = document.getElementById('correctAnswer');
+const shareLinkInput = document.getElementById('shareLink');
 
-    // Save score along with total questions
-    function saveScore(name, score) {
-      const leaderboardKey = 'quizLeaderboard';
-      const leaderboard = JSON.parse(localStorage.getItem(leaderboardKey)) || [];
-      const timestamp = Date.now();
-      latestAttemptTimestamp = timestamp;
-      leaderboard.push({name, score, total: questions.length, timestamp});
-      localStorage.setItem(leaderboardKey, JSON.stringify(leaderboard));
-    }
+const editorDiv = document.getElementById('editor');
+const quizDiv = document.getElementById('quiz');
+const startQuizBtn = document.getElementById('startQuizBtn');
+const questionContainer = document.getElementById('questionContainer');
+const progressEl = document.getElementById('progress');
+const progressBar = document.getElementById('progressBar');
+const scoreDisplay = document.getElementById('scoreDisplay');
+const timerBar = document.getElementById('timerBar');
+const questionEl = document.getElementById('question');
+const optionsDiv = document.getElementById('options');
+const streakDisplay = document.getElementById('streakDisplay');
+const feedbackEl = document.getElementById('feedback');
+const nextBtn = document.getElementById('next');
+const resultDiv = document.getElementById('result');
+const finalScoreEl = document.getElementById('finalScore');
+const leaderboardEl = document.getElementById('leaderboard');
+const playAgainBtn = document.getElementById('playAgainBtn');
+const resetLeaderboardBtn = document.getElementById('resetLeaderboardBtn');
+const toggleDarkModeBtn = document.getElementById('toggleDarkMode');
 
-    function showLeaderboard() {
-      leaderboardEl.innerHTML = '';
-      const leaderboard = JSON.parse(localStorage.getItem('quizLeaderboard')) || [];
-      leaderboard
-        .sort((a,b)=> b.score - a.score || a.timestamp - b.timestamp)
-        .slice(0, 10)
-        .forEach(entry => {
-          const li = document.createElement('li');
-          const date = new Date(entry.timestamp);
-          li.textContent = `${entry.name} - ${entry.score} Correct answer${entry.score!==1?'s':''} out of ${entry.total} (${date.toLocaleString()})`;
-          if(entry.timestamp === latestAttemptTimestamp){
-            li.classList.add('highlight');
-          }
-          leaderboardEl.appendChild(li);
-        });
-    }
+const correctSound = document.getElementById('correctSound');
+const wrongSound = document.getElementById('wrongSound');
+const celebrationSound = document.getElementById('celebrationSound');
+const confettiCanvas = document.getElementById('confettiCanvas');
 
-    // Load quiz from URL
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.has('quiz')) {
-      const encoded = urlParams.get('quiz');
-      try {
-        questions = JSON.parse(decodeURIComponent(atob(encoded)));
-        shuffleArray(questions);
-        editorDiv.classList.add('hidden');
-        quizDiv.classList.remove('hidden');
-        startQuizBtn.classList.remove('hidden');
-      } catch(e){ console.error('Invalid quiz data'); }
-    }
+function shuffleArray(arr){for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];}}
 
-    // Editor
-    addBtn.addEventListener('click', () => {
-      const question = questionText.value.trim();
-      const options = Array.from(optionInputs).map(i=>i.value.trim());
-      const answer = correctAnswerInput.value.trim();
-      if(!question || options.some(opt=>!opt)||!answer){ alert('Fill all fields'); return; }
-      questions.push({question, options, answer});
-      questionText.value = '';
-      optionInputs.forEach(i=>i.value='');
-      correctAnswerInput.value='';
-      alert('Question added! Total: '+questions.length);
-    });
+function saveScore(name, score, maxStreak){const leaderboardKey='quizLeaderboard';const leaderboard=JSON.parse(localStorage.getItem(leaderboardKey))||[];latestAttemptTimestamp=Date.now();leaderboard.push({name, score, maxStreak, total: questions.length, timestamp: latestAttemptTimestamp});localStorage.setItem(leaderboardKey,JSON.stringify(leaderboard));}
 
-    generateLinkBtn.addEventListener('click', () => {
-      if(questions.length===0){ alert('Add questions first'); return; }
-      const encoded = btoa(encodeURIComponent(JSON.stringify(questions)));
-      const link = window.location.origin + window.location.pathname + '?quiz=' + encoded;
-      shareLinkInput.value = link;
-      shareLinkInput.select();
-      document.execCommand('copy');
-      alert('Link copied!');
-    });
+function showLeaderboard(){
+leaderboardEl.innerHTML='';const leaderboard=JSON.parse(localStorage.getItem('quizLeaderboard'))||[];
+leaderboard.sort((a,b)=>b.score-b.score||b.maxStreak-a.maxStreak||a.timestamp-b.timestamp).slice(0,10).forEach((entry,index)=>{
+const li=document.createElement('li');const date=new Date(entry.timestamp);const answerText=entry.score===1?'answer':'answers';
+li.textContent=`${entry.name} - ${entry.score} Correct ${answerText} out of ${entry.total} (Highest Streak: ${entry.maxStreak})`;
+if(entry.timestamp===latestAttemptTimestamp) li.classList.add('highlight');
+if(index===0) li.classList.add('gold');else if(index===1) li.classList.add('silver');else if(index===2) li.classList.add('bronze');
+leaderboardEl.appendChild(li);
+});
+}
 
-    startQuizBtn.addEventListener('click', () => {
-      startQuizBtn.classList.add('hidden');
-      questionContainer.classList.remove('hidden');
-      startQuiz();
-    });
+const urlParams=new URLSearchParams(window.location.search);
+if(urlParams.has('quiz')){const encoded=urlParams.get('quiz');try{questions=JSON.parse(decodeURIComponent(atob(encoded)));shuffleArray(questions);editorDiv.classList.add('hidden');quizDiv.classList.remove('hidden');startQuizBtn.classList.remove('hidden');}catch(e){console.error('Invalid quiz data');}}
 
-    playAgainBtn.addEventListener('click', () => {
-      resultDiv.classList.add('hidden');
-      questionContainer.classList.remove('hidden');
-      feedbackEl.textContent = '';
-      startQuiz();
-    });
+addBtn.addEventListener('click',()=>{
+const question=questionText.value.trim();const options=Array.from(optionInputs).map(i=>i.value.trim());const answer=correctAnswerInput.value.trim();
+if(!question||options.some(opt=>!opt)||!answer){alert('Fill all fields');return;}
+questions.push({question, options, answer});
+questionText.value='';optionInputs.forEach(i=>i.value='');correctAnswerInput.value='';
+alert('Question added! Total: '+questions.length);
+});
 
-    resetLeaderboardBtn.addEventListener('click', () => {
-      if(confirm('Are you sure you want to reset the leaderboard? This cannot be undone.')) {
-        localStorage.removeItem('quizLeaderboard');
-        showLeaderboard();
-        alert('Leaderboard has been reset.');
-      }
-    });
+generateLinkBtn.addEventListener('click',()=>{
+if(questions.length===0){alert('Add questions first');return;}
+const encoded=btoa(encodeURIComponent(JSON.stringify(questions)));
+const link=window.location.origin+window.location.pathname+'?quiz='+encoded;
+shareLinkInput.value=link;shareLinkInput.select();document.execCommand('copy');alert('Link copied!');
+});
 
-    function startQuiz() {
-      currentIndex=0;
-      score=0;
-      feedbackEl.textContent='';
-      nextBtn.classList.add('hidden');
-      showQuestion();
-    }
+startQuizBtn.addEventListener('click'=>{startQuizBtn.classList.add('hidden');questionContainer.classList.remove('hidden');startQuiz();});
 
-    function showQuestion(){
-      feedbackEl.textContent='';
-      const q=questions[currentIndex];
-      questionEl.textContent=`Q${currentIndex+1}: ${q.question}`;
-      optionsDiv.innerHTML='';
-      const shuffled=[...q.options];
-      shuffleArray(shuffled);
-      shuffled.forEach(opt=>{
-        const btn=document.createElement('button');
-        btn.textContent=opt;
-        btn.onclick=()=>selectAnswer(opt,q.answer,btn);
-        optionsDiv.appendChild(btn);
-      });
-      nextBtn.classList.add('hidden');
-    }
+playAgainBtn.addEventListener('click'=>{resultDiv.classList.add('hidden');questionContainer.classList.remove('hidden');feedbackEl.textContent='';startQuiz();});
 
-    function selectAnswer(selected, correct, btn){
-      const buttons = optionsDiv.querySelectorAll('button');
-      buttons.forEach(b=>b.disabled=true);
-      if(selected===correct){
-        score++;
-        feedbackEl.textContent='✅ Correct!';
-        btn.style.backgroundColor='#28a745';
-      } else {
-        feedbackEl.textContent=`❌ Wrong! Correct: ${correct}`;
-        btn.style.backgroundColor='#dc3545';
-      }
-      nextBtn.classList.remove('hidden');
-    }
+resetLeaderboardBtn.addEventListener('click',()=>{if(confirm('Are you sure you want to reset the leaderboard?')){localStorage.removeItem('quizLeaderboard');showLeaderboard();alert('Leaderboard has been reset.');}});
 
-    nextBtn.addEventListener('click', ()=>{
-      currentIndex++;
-      if(currentIndex<questions.length){
-        showQuestion();
-      } else {
-        endQuiz();
-      }
-    });
+toggleDarkModeBtn.addEventListener('click',()=>{document.body.classList.toggle('dark-mode');});
 
-    function endQuiz(){
-      questionContainer.classList.add('hidden');
-      resultDiv.classList.remove('hidden');
-      finalScoreEl.textContent=`${score} / ${questions.length}`;
-      let name = sessionStorage.getItem('quizPlayerName');
-      if(!name){
-        name = prompt('Enter your name for the leaderboard:');
-        if(name) sessionStorage.setItem('quizPlayerName', name);
-      }
-      if(name) saveScore(name, score);
-      showLeaderboard();
-    }
+function startQuiz(){currentIndex=0;baseScore=0;score=0;streak=0;maxStreak=0;updateScoreDisplay();feedbackEl.textContent='';nextBtn.classList.add('hidden');showQuestion();}
 
-    showLeaderboard();
-  </script>
+function updateScoreDisplay(){scoreDisplay.textContent=`Score: ${score} / ${questions.length}`;}
+
+function startTimer(callback){let timeLeft=timePerQuestion;timerBar.style.width='100%';clearInterval(timerInterval);timerInterval=setInterval(()=>{timeLeft--;timerBar.style.width=`${(timeLeft/timePerQuestion)*100}%`;if(timeLeft<=0){clearInterval(timerInterval);callback();}},1000);}
+
+function showQuestion(){feedbackEl.textContent='';progressEl.textContent=`Question ${currentIndex+1} of ${questions.length}`;progressBar.style.width=`${((currentIndex+1)/questions.length)*100}%`;updateScoreDisplay();const q=questions[currentIndex];questionEl.textContent=q.question;optionsDiv.innerHTML='';const shuffled=[...q.options];shuffleArray(shuffled);shuffled.forEach(opt=>{const btn=document.createElement('button');btn.textContent=opt;btn.className='option-btn';btn.onclick=()=>selectAnswer(opt,q.answer,btn,true);optionsDiv.appendChild(btn);});nextBtn.classList.add('hidden');startTimer(()=>selectAnswer(null,q.answer,null,false));updateStreakDisplay();}
+
+function updateStreakDisplay(){streakDisplay.textContent='';for(let i=0;i<streak;i++){const flame=document.createElement('span');flame.textContent='🔥';flame.className='streak-flame';streakDisplay.appendChild(flame);}}
+
+function checkPersonalBest(){const name=sessionStorage.getItem('quizPlayerName');if(!name) return;const leaderboard=JSON.parse(localStorage.getItem('quizLeaderboard'))||[];const prev=leaderboard.filter(e=>e.name===name);const personalBest=prev.length?Math.max(...prev.map(e=>e.maxStreak)):0;if(streak>personalBest){celebrationSound.play();launchConfetti();}}
+
+function selectAnswer(selected,correct,btn,manual=true){clearInterval(timerInterval);const buttons=optionsDiv.querySelectorAll('button');buttons.forEach(b=>b.disabled=true);if(selected===correct){if(manual){baseScore++;streak++;if(streak>maxStreak) maxStreak=streak;score+=streak;}feedbackEl.textContent=`✅ Correct! Streak: ${streak} (+${streak} pts)`;if(btn) btn.classList.add('correct');correctSound.play();checkPersonalBest();}else{feedbackEl.textContent=selected===null?`⏰ Time's up! Correct: ${correct}`:`❌ Wrong! Correct: ${correct}`;if(btn) btn.classList.add('wrong');buttons.forEach(b=>{if(b.textContent===correct)b.classList.add('correct');});streak=0;wrongSound.play();}updateScoreDisplay();updateStreakDisplay();nextBtn.classList.remove('hidden');}
+
+nextBtn.addEventListener('click',()=>{currentIndex++;if(currentIndex<questions.length) showQuestion();else endQuiz();});
+
+function endQuiz(){questionContainer.classList.add('hidden');resultDiv.classList.remove('hidden');finalScoreEl.textContent=`${score} / ${questions.length}`;let name=sessionStorage.getItem('quizPlayerName');if(!name){name=prompt('Enter your name for the leaderboard:');if(name) sessionStorage.setItem('quizPlayerName',name);}if(name) saveScore(name,score,maxStreak);showLeaderboard();}
+
+document.addEventListener('keydown',e=>{if(['1','2','3','4'].includes(e.key)&&!nextBtn.classList.contains('hidden')){const btn=optionsDiv.querySelectorAll('button')[parseInt(e.key)-1];if(btn) btn.click();}});
+
+function launchConfetti(){confettiCanvas.classList.remove('hidden');const confetti=confettiCanvas.getContext('2d');const pieces=[];const W=confettiCanvas.width=window.innerWidth;const H=confettiCanvas.height=window.innerHeight;for(let i=0;i<150;i++){pieces.push({x:Math.random()*W,y:Math.random()*H,r:Math.random()*6+4,d:Math.random()*H,color:`hsl(${Math.random()*360},100%,50%)`,tilt:Math.random()*10-10});}let angle=0;function draw(){confetti.clearRect(0,0,W,H);pieces.forEach(p=>{confetti.fillStyle=p.color;confetti.beginPath();confetti.moveTo(p.x+p.tilt,p.y);confetti.lineTo(p.x+p.tilt+p.r/2,p.y+p.r);confetti.lineTo(p.x+p.tilt-p.r/2,p.y+p.r);confetti.closePath();confetti.fill();p.y+=2;p.tilt+=Math.sin(angle)*0.5;if(p.y>H)p.y=0;});angle+=0.1;requestAnimationFrame(draw);}draw();setTimeout(()=>confettiCanvas.classList.add('hidden'),3000);}
+
+showLeaderboard();
+</script>
 </body>
 </html>
