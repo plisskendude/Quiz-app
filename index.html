@@ -1,13 +1,11 @@
-let streak = 0; // current streak
-let maxStreak = 0; // max streak for this attempt
-let baseScore = 0;
+let streak = 0; // new variable for streak
+let baseScore = 0; // normal correct answers count
 
 function startQuiz() {
   currentIndex = 0;
   baseScore = 0;
   score = 0;
   streak = 0;
-  maxStreak = 0;
   scoreDisplay.textContent = `Score: ${score} / ${questions.length}`;
   feedbackEl.textContent = '';
   nextBtn.classList.add('hidden');
@@ -23,8 +21,7 @@ function selectAnswer(selected, correct, btn, manual=true) {
     if(manual) {
       baseScore++;
       streak++;
-      if(streak > maxStreak) maxStreak = streak;
-      score += streak; // streak bonus
+      score += streak; // add streak bonus to total score
     }
     feedbackEl.textContent = `✅ Correct! Streak: ${streak} (+${streak} pts)`;
     if(btn) btn.classList.add('correct');
@@ -43,44 +40,8 @@ function selectAnswer(selected, correct, btn, manual=true) {
   nextBtn.classList.remove('hidden');
 }
 
-function endQuiz() {
-  questionContainer.classList.add('hidden');
-  resultDiv.classList.remove('hidden');
-  finalScoreEl.textContent = `${score} / ${questions.length}`;
-
-  let name = sessionStorage.getItem('quizPlayerName');
-  if(!name){
-    name = prompt('Enter your name for the leaderboard:');
-    if(name) sessionStorage.setItem('quizPlayerName', name);
-  }
-  if(name) saveScore(name, score, maxStreak);
-  showLeaderboard();
-}
-
-function saveScore(name, score, maxStreak) {
-  const leaderboardKey = 'quizLeaderboard';
-  const leaderboard = JSON.parse(localStorage.getItem(leaderboardKey)) || [];
-  const timestamp = Date.now();
-  latestAttemptTimestamp = timestamp;
-  leaderboard.push({name, score, maxStreak, total: questions.length, timestamp});
-  localStorage.setItem(leaderboardKey, JSON.stringify(leaderboard));
-}
-
-function showLeaderboard() {
-  leaderboardEl.innerHTML = '';
-  const leaderboard = JSON.parse(localStorage.getItem('quizLeaderboard')) || [];
-  leaderboard
-    .sort((a,b)=> b.score - a.score || b.maxStreak - a.maxStreak || a.timestamp - b.timestamp)
-    .slice(0, 10)
-    .forEach((entry, index) => {
-      const li = document.createElement('li');
-      const date = new Date(entry.timestamp);
-      const answerText = entry.score === 1 ? 'answer' : 'answers';
-      li.textContent = `${entry.name} - ${entry.score} Correct ${answerText} out of ${entry.total} (Highest Streak: ${entry.maxStreak})`;
-      if(entry.timestamp === latestAttemptTimestamp) li.classList.add('highlight');
-      if(index === 0) li.classList.add('gold');
-      else if(index === 1) li.classList.add('silver');
-      else if(index === 2) li.classList.add('bronze');
-      leaderboardEl.appendChild(li);
-    });
+// helper function to calculate max potential streak bonus for display
+function calculateMaxStreakBonus() {
+  let n = questions.length;
+  return (n*(n+1))/2 - n; // maximum possible bonus if all answers correct
 }
