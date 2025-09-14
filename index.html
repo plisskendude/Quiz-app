@@ -24,7 +24,7 @@
   <div class="card">
     <h1>Shareable Quiz App with Leaderboard</h1>
 
-    <!-- Editor -->
+    <!-- Editor (main page) -->
     <div id="editor">
       <h2>Create a Question</h2>
       <input type="text" id="questionText" placeholder="Enter question"><br>
@@ -36,6 +36,9 @@
       <button id="addQuestion">Add Question</button>
       <button id="generateLink">Generate Shareable Link</button>
       <input type="text" id="shareLink" readonly placeholder="Your shareable link will appear here">
+      <br>
+      <!-- Reset leaderboard button ONLY on editor page -->
+      <button id="resetLeaderboardBtn" style="margin-top: 10px; background-color:#dc3545;">Reset Leaderboard</button>
     </div>
 
     <!-- Quiz -->
@@ -55,7 +58,6 @@
       <p id="finalScore"></p>
       <h2>Leaderboard</h2>
       <ol id="leaderboard"></ol>
-      <button id="resetLeaderboardBtn" style="margin-top: 10px; background-color:#dc3545;">Reset Leaderboard</button>
       <br>
       <button id="playAgainBtn">Play Again</button>
     </div>
@@ -105,6 +107,7 @@
       localStorage.setItem(leaderboardKey, JSON.stringify(leaderboard));
     }
 
+    // Show leaderboard (used on quiz results)
     function showLeaderboard() {
       leaderboardEl.innerHTML = '';
       const leaderboard = JSON.parse(localStorage.getItem('quizLeaderboard')) || [];
@@ -159,6 +162,14 @@
       alert('Link copied!');
     });
 
+    // Reset leaderboard only on editor page
+    resetLeaderboardBtn.addEventListener('click', () => {
+      if(confirm('Are you sure you want to reset the leaderboard? This cannot be undone.')) {
+        localStorage.removeItem('quizLeaderboard');
+        alert('Leaderboard has been reset.');
+      }
+    });
+
     startQuizBtn.addEventListener('click', () => {
       startQuizBtn.classList.add('hidden');
       questionContainer.classList.remove('hidden');
@@ -170,14 +181,6 @@
       questionContainer.classList.remove('hidden');
       feedbackEl.textContent = '';
       startQuiz();
-    });
-
-    resetLeaderboardBtn.addEventListener('click', () => {
-      if(confirm('Are you sure you want to reset the leaderboard? This cannot be undone.')) {
-        localStorage.removeItem('quizLeaderboard');
-        showLeaderboard();
-        alert('Leaderboard has been reset.');
-      }
     });
 
     function startQuiz() {
