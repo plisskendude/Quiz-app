@@ -17,13 +17,14 @@
     #shareLink { width: 100%; }
     #leaderboard { margin-top: 15px; text-align: left; }
     .feedback { font-weight: bold; margin: 10px 0; }
+    .highlight { background-color: #fff3cd; font-weight: bold; }
   </style>
 </head>
 <body>
   <div class="card">
     <h1>Shareable Quiz App with Leaderboard</h1>
 
-    <!-- Editor for creating questions -->
+    <!-- Editor -->
     <div id="editor">
       <h2>Create a Question</h2>
       <input type="text" id="questionText" placeholder="Enter question"><br>
@@ -37,7 +38,7 @@
       <input type="text" id="shareLink" readonly placeholder="Your shareable link will appear here">
     </div>
 
-    <!-- Quiz view -->
+    <!-- Quiz -->
     <div id="quiz" class="hidden">
       <button id="startQuizBtn">Start Quiz</button>
       <div id="questionContainer" class="hidden">
@@ -48,12 +49,13 @@
       </div>
     </div>
 
-    <!-- Result view -->
+    <!-- Results -->
     <div id="result" class="hidden">
       <h2>Final Score</h2>
       <p id="finalScore"></p>
       <h2>Leaderboard</h2>
       <ol id="leaderboard"></ol>
+      <button id="playAgainBtn">Play Again</button>
     </div>
   </div>
 
@@ -61,6 +63,7 @@
     let questions = [];
     let currentIndex = 0;
     let score = 0;
+    let latestAttemptTimestamp = null;
     let leaderboardEl = document.getElementById('leaderboard');
 
     const addBtn = document.getElementById('addQuestion');
@@ -80,6 +83,7 @@
     const feedbackEl = document.getElementById('feedback');
     const resultDiv = document.getElementById('result');
     const finalScoreEl = document.getElementById('finalScore');
+    const playAgainBtn = document.getElementById('playAgainBtn');
 
     function shuffleArray(arr) {
       for (let i = arr.length - 1; i > 0; i--) {
@@ -91,19 +95,27 @@
     function saveScore(name, score) {
       const leaderboardKey = 'quizLeaderboard';
       const leaderboard = JSON.parse(localStorage.getItem(leaderboardKey)) || [];
-      leaderboard.push({name, score});
-      leaderboard.sort((a, b) => b.score - a.score);
+      const timestamp = Date.now();
+      latestAttemptTimestamp = timestamp;
+      leaderboard.push({name, score, timestamp});
       localStorage.setItem(leaderboardKey, JSON.stringify(leaderboard));
     }
 
     function showLeaderboard() {
       leaderboardEl.innerHTML = '';
       const leaderboard = JSON.parse(localStorage.getItem('quizLeaderboard')) || [];
-      leaderboard.slice(0, 10).forEach(entry => {
-        const li = document.createElement('li');
-        li.textContent = `${entry.name} - ${entry.score}`;
-        leaderboardEl.appendChild(li);
-      });
+      leaderboard
+        .sort((a,b)=> b.score - a.score || a.timestamp - b.timestamp)
+        .slice(0, 10)
+        .forEach(entry => {
+          const li = document.createElement('li');
+          const date = new Date(entry.timestamp);
+          li.textContent = `${entry.name} - ${entry.score} (${date.toLocaleString()})`;
+          if(entry.timestamp === latestAttemptTimestamp){
+            li.classList.add('highlight');
+          }
+          leaderboardEl.appendChild(li);
+        });
     }
 
     // Load quiz from URL
@@ -113,102 +125,105 @@
       try {
         questions = JSON.parse(decodeURIComponent(atob(encoded)));
         shuffleArray(questions);
-        editorDiv.classList.add('hidden'); // hide editor for players
-        quizDiv.classList.remove('hidden'); // show quiz container
-        startQuizBtn.classList.remove('hidden'); // show start button
-      } catch (e) {
-        console.error('Invalid quiz data');
-      }
+        editorDiv.classList.add('hidden');
+        quizDiv.classList.remove('hidden');
+        startQuizBtn.classList.remove('hidden');
+      } catch(e){ console.error('Invalid quiz data'); }
     }
 
-    // Editor: add question
+    // Editor
     addBtn.addEventListener('click', () => {
       const question = questionText.value.trim();
-      const options = Array.from(optionInputs).map(input => input.value.trim());
+      const options = Array.from(optionInputs).map(i=>i.value.trim());
       const answer = correctAnswerInput.value.trim();
-      if (!question || options.some(opt => !opt) || !answer) {
-        alert('Please fill all fields.');
-        return;
-      }
+      if(!question || options.some(opt=>!opt)||!answer){ alert('Fill all fields'); return; }
       questions.push({question, options, answer});
       questionText.value = '';
-      optionInputs.forEach(input => input.value = '');
-      correctAnswerInput.value = '';
-      alert('Question added! Total questions: ' + questions.length);
+      optionInputs.forEach(i=>i.value='');
+      correctAnswerInput.value='';
+      alert('Question added! Total: '+questions.length);
     });
 
-    // Editor: generate link
     generateLinkBtn.addEventListener('click', () => {
-      if (questions.length === 0) { alert('Add questions first'); return; }
+      if(questions.length===0){ alert('Add questions first'); return; }
       const encoded = btoa(encodeURIComponent(JSON.stringify(questions)));
       const link = window.location.origin + window.location.pathname + '?quiz=' + encoded;
       shareLinkInput.value = link;
       shareLinkInput.select();
       document.execCommand('copy');
-      alert('Shareable link copied to clipboard!');
+      alert('Link copied!');
     });
 
-    // Start quiz button
     startQuizBtn.addEventListener('click', () => {
       startQuizBtn.classList.add('hidden');
       questionContainer.classList.remove('hidden');
       startQuiz();
     });
 
-    function startQuiz() {
-      currentIndex = 0;
-      score = 0;
+    playAgainBtn.addEventListener('click', () => {
+      resultDiv.classList.add('hidden');
+      questionContainer.classList.remove('hidden');
       feedbackEl.textContent = '';
+      startQuiz();
+    });
+
+    function startQuiz() {
+      currentIndex=0;
+      score=0;
+      feedbackEl.textContent='';
       nextBtn.classList.add('hidden');
       showQuestion();
     }
 
-    function showQuestion() {
-      feedbackEl.textContent = '';
-      const q = questions[currentIndex];
-      questionEl.textContent = `Q${currentIndex+1}: ${q.question}`;
-      optionsDiv.innerHTML = '';
-      const shuffledOptions = [...q.options];
-      shuffleArray(shuffledOptions);
-      shuffledOptions.forEach(opt => {
-        const btn = document.createElement('button');
-        btn.textContent = opt;
-        btn.onclick = () => selectAnswer(opt, q.answer, btn);
+    function showQuestion(){
+      feedbackEl.textContent='';
+      const q=questions[currentIndex];
+      questionEl.textContent=`Q${currentIndex+1}: ${q.question}`;
+      optionsDiv.innerHTML='';
+      const shuffled=[...q.options];
+      shuffleArray(shuffled);
+      shuffled.forEach(opt=>{
+        const btn=document.createElement('button');
+        btn.textContent=opt;
+        btn.onclick=()=>selectAnswer(opt,q.answer,btn);
         optionsDiv.appendChild(btn);
       });
       nextBtn.classList.add('hidden');
     }
 
-    function selectAnswer(selected, correct, btn) {
+    function selectAnswer(selected, correct, btn){
       const buttons = optionsDiv.querySelectorAll('button');
-      buttons.forEach(b => b.disabled = true);
-      if (selected === correct) {
+      buttons.forEach(b=>b.disabled=true);
+      if(selected===correct){
         score++;
-        feedbackEl.textContent = '✅ Correct!';
-        btn.style.backgroundColor = '#28a745';
+        feedbackEl.textContent='✅ Correct!';
+        btn.style.backgroundColor='#28a745';
       } else {
-        feedbackEl.textContent = `❌ Wrong! Correct: ${correct}`;
-        btn.style.backgroundColor = '#dc3545';
+        feedbackEl.textContent=`❌ Wrong! Correct: ${correct}`;
+        btn.style.backgroundColor='#dc3545';
       }
       nextBtn.classList.remove('hidden');
     }
 
-    nextBtn.addEventListener('click', () => {
+    nextBtn.addEventListener('click', ()=>{
       currentIndex++;
-      if (currentIndex < questions.length) {
+      if(currentIndex<questions.length){
         showQuestion();
       } else {
         endQuiz();
       }
     });
 
-    function endQuiz() {
+    function endQuiz(){
       questionContainer.classList.add('hidden');
       resultDiv.classList.remove('hidden');
-      finalScoreEl.textContent = `${score} / ${questions.length}`;
-      const name = prompt('Enter your name for the leaderboard:');
-      if (name) saveScore(name, score);
-      leaderboardEl = document.getElementById('leaderboard');
+      finalScoreEl.textContent=`${score} / ${questions.length}`;
+      let name = sessionStorage.getItem('quizPlayerName');
+      if(!name){
+        name = prompt('Enter your name for the leaderboard:');
+        if(name) sessionStorage.setItem('quizPlayerName', name);
+      }
+      if(name) saveScore(name, score);
       showLeaderboard();
     }
 
