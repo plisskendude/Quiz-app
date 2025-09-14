@@ -3,35 +3,28 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Timed Quiz App with Leaderboard</title>
+  <title>Shareable Quiz App with Leaderboard</title>
   <style>
     body { font-family: Arial, sans-serif; background: #f4f4f9; padding: 20px; text-align: center; }
     .card { background: white; padding: 20px; border-radius: 12px; max-width: 600px; margin: auto; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
     h1 { font-size: 24px; }
     input, button { margin: 8px 0; padding: 8px; font-size: 16px; }
-    button { border: none; border-radius: 8px; background: #007BFF; color: white; cursor: pointer; transition: 0.2s; }
+    button { border: none; border-radius: 8px; background: #007BFF; color: white; cursor: pointer; }
     button:hover { background: #0056b3; }
-    .options { margin: 10px 0; display: flex; flex-direction: column; gap: 10px; }
+    .options { margin: 10px 0; display: flex; flex-direction: column; gap: 8px; }
     .hidden { display: none; }
-    .option-btn { padding: 10px; font-size: 16px; border-radius: 8px; cursor: pointer; transition: 0.2s; }
-    .option-btn.correct { background-color: #28a745 !important; color: white; }
-    .option-btn.wrong { background-color: #dc3545 !important; color: white; }
+    .option-input { display: block; margin-bottom: 5px; }
     #shareLink { width: 100%; }
     #leaderboard { margin-top: 15px; text-align: left; }
     .feedback { font-weight: bold; margin: 10px 0; }
     .highlight { background-color: #fff3cd; font-weight: bold; }
-    .gold { color: gold; font-weight: bold; }
-    .silver { color: silver; font-weight: bold; }
-    .bronze { color: #cd7f32; font-weight: bold; }
-    #progress { font-weight: bold; margin-bottom: 10px; }
-    #scoreDisplay { font-weight: bold; margin-bottom: 5px; }
-    #timer { font-weight: bold; color: #dc3545; }
   </style>
 </head>
 <body>
   <div class="card">
-    <h1>Timed Quiz App with Leaderboard</h1>
+    <h1>Shareable Quiz App with Leaderboard</h1>
 
+    <!-- Editor -->
     <div id="editor">
       <h2>Create a Question</h2>
       <input type="text" id="questionText" placeholder="Enter question"><br>
@@ -45,12 +38,10 @@
       <input type="text" id="shareLink" readonly placeholder="Your shareable link will appear here">
     </div>
 
+    <!-- Quiz -->
     <div id="quiz" class="hidden">
       <button id="startQuizBtn">Start Quiz</button>
       <div id="questionContainer" class="hidden">
-        <p id="scoreDisplay">Score: 0 / 0</p>
-        <p id="progress"></p>
-        <p id="timer"></p>
         <p id="question"></p>
         <div id="options" class="options"></div>
         <div class="feedback" id="feedback"></div>
@@ -58,6 +49,7 @@
       </div>
     </div>
 
+    <!-- Results -->
     <div id="result" class="hidden">
       <h2>Final Score</h2>
       <p id="finalScore"></p>
@@ -74,10 +66,8 @@
     let currentIndex = 0;
     let score = 0;
     let latestAttemptTimestamp = null;
-    let timerInterval = null;
-    const timePerQuestion = 15; // seconds
+    let leaderboardEl = document.getElementById('leaderboard');
 
-    const leaderboardEl = document.getElementById('leaderboard');
     const addBtn = document.getElementById('addQuestion');
     const generateLinkBtn = document.getElementById('generateLink');
     const questionText = document.getElementById('questionText');
@@ -89,9 +79,6 @@
     const quizDiv = document.getElementById('quiz');
     const startQuizBtn = document.getElementById('startQuizBtn');
     const questionContainer = document.getElementById('questionContainer');
-    const progressEl = document.getElementById('progress');
-    const scoreDisplay = document.getElementById('scoreDisplay');
-    const timerEl = document.getElementById('timer');
     const questionEl = document.getElementById('question');
     const optionsDiv = document.getElementById('options');
     const nextBtn = document.getElementById('next');
@@ -108,6 +95,7 @@
       }
     }
 
+    // Save score with total questions
     function saveScore(name, score) {
       const leaderboardKey = 'quizLeaderboard';
       const leaderboard = JSON.parse(localStorage.getItem(leaderboardKey)) || [];
@@ -123,19 +111,19 @@
       leaderboard
         .sort((a,b)=> b.score - a.score || a.timestamp - b.timestamp)
         .slice(0, 10)
-        .forEach((entry, index) => {
+        .forEach(entry => {
           const li = document.createElement('li');
           const date = new Date(entry.timestamp);
-          const answerText = entry.score === 1 ? 'answer' : 'answers';
+          const answerText = entry.score === 1 ? 'answer' : 'answers'; // Pluralization
           li.textContent = `${entry.name} - ${entry.score} Correct ${answerText} out of ${entry.total} (${date.toLocaleString()})`;
-          if(entry.timestamp === latestAttemptTimestamp) li.classList.add('highlight');
-          if(index === 0) li.classList.add('gold');
-          else if(index === 1) li.classList.add('silver');
-          else if(index === 2) li.classList.add('bronze');
+          if(entry.timestamp === latestAttemptTimestamp){
+            li.classList.add('highlight');
+          }
           leaderboardEl.appendChild(li);
         });
     }
 
+    // Load quiz from URL
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.has('quiz')) {
       const encoded = urlParams.get('quiz');
@@ -148,6 +136,7 @@
       } catch(e){ console.error('Invalid quiz data'); }
     }
 
+    // Editor
     addBtn.addEventListener('click', () => {
       const question = questionText.value.trim();
       const options = Array.from(optionInputs).map(i=>i.value.trim());
@@ -184,7 +173,7 @@
     });
 
     resetLeaderboardBtn.addEventListener('click', () => {
-      if(confirm('Are you sure you want to reset the leaderboard?')) {
+      if(confirm('Are you sure you want to reset the leaderboard? This cannot be undone.')) {
         localStorage.removeItem('quizLeaderboard');
         showLeaderboard();
         alert('Leaderboard has been reset.');
@@ -192,78 +181,56 @@
     });
 
     function startQuiz() {
-      currentIndex = 0;
-      score = 0;
-      scoreDisplay.textContent = `Score: ${score} / ${questions.length}`;
-      feedbackEl.textContent = '';
+      currentIndex=0;
+      score=0;
+      feedbackEl.textContent='';
       nextBtn.classList.add('hidden');
       showQuestion();
     }
 
-    function startTimer(callback) {
-      let timeLeft = timePerQuestion;
-      timerEl.textContent = `Time: ${timeLeft}s`;
-      clearInterval(timerInterval);
-      timerInterval = setInterval(() => {
-        timeLeft--;
-        timerEl.textContent = `Time: ${timeLeft}s`;
-        if(timeLeft <= 0){
-          clearInterval(timerInterval);
-          callback();
-        }
-      }, 1000);
-    }
-
-    function showQuestion() {
-      feedbackEl.textContent = '';
-      progressEl.textContent = `Question ${currentIndex + 1} of ${questions.length}`;
-      scoreDisplay.textContent = `Score: ${score} / ${questions.length}`;
-      const q = questions[currentIndex];
-      questionEl.textContent = q.question;
-      optionsDiv.innerHTML = '';
-      const shuffled = [...q.options];
+    function showQuestion(){
+      feedbackEl.textContent='';
+      const q=questions[currentIndex];
+      questionEl.textContent=`Q${currentIndex+1}: ${q.question}`;
+      optionsDiv.innerHTML='';
+      const shuffled=[...q.options];
       shuffleArray(shuffled);
-      shuffled.forEach(opt => {
-        const btn = document.createElement('button');
-        btn.textContent = opt;
-        btn.className = 'option-btn';
-        btn.onclick = () => selectAnswer(opt, q.answer, btn, true);
+      shuffled.forEach(opt=>{
+        const btn=document.createElement('button');
+        btn.textContent=opt;
+        btn.onclick=()=>selectAnswer(opt,q.answer,btn);
         optionsDiv.appendChild(btn);
       });
       nextBtn.classList.add('hidden');
-
-      // Start timer for this question
-      startTimer(() => selectAnswer(null, q.answer, null, false)); // Auto wrong if time runs out
     }
 
-    function selectAnswer(selected, correct, btn, manual=true) {
-      clearInterval(timerInterval);
+    function selectAnswer(selected, correct, btn){
       const buttons = optionsDiv.querySelectorAll('button');
-      buttons.forEach(b => b.disabled = true);
-      if(selected === correct){
-        if(manual) score++;
-        feedbackEl.textContent = '✅ Correct!';
-        if(btn) btn.classList.add('correct');
+      buttons.forEach(b=>b.disabled=true);
+      if(selected===correct){
+        score++;
+        feedbackEl.textContent='✅ Correct!';
+        btn.style.backgroundColor='#28a745';
       } else {
-        feedbackEl.textContent = selected===null ? `⏰ Time's up! Correct: ${correct}` : `❌ Wrong! Correct: ${correct}`;
-        if(btn) btn.classList.add('wrong');
-        // Highlight correct answer
-        buttons.forEach(b => { if(b.textContent === correct) b.classList.add('correct'); });
+        feedbackEl.textContent=`❌ Wrong! Correct: ${correct}`;
+        btn.style.backgroundColor='#dc3545';
       }
-      scoreDisplay.textContent = `Score: ${score} / ${questions.length}`;
       nextBtn.classList.remove('hidden');
     }
 
-    nextBtn.addEventListener('click', () => {
+    nextBtn.addEventListener('click', ()=>{
       currentIndex++;
-      if(currentIndex < questions.length) showQuestion();
-      else endQuiz();
+      if(currentIndex<questions.length){
+        showQuestion();
+      } else {
+        endQuiz();
+      }
     });
 
-    function endQuiz() {
+    function endQuiz(){
       questionContainer.classList.add('hidden');
       resultDiv.classList.remove('hidden');
-      finalScoreEl.textContent = `${score} / ${questions.length}`;
+      finalScoreEl.textContent=`${score} / ${questions.length}`;
       let name = sessionStorage.getItem('quizPlayerName');
       if(!name){
         name = prompt('Enter your name for the leaderboard:');
