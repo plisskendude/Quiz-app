@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Enhanced Quiz App with Leaderboard</title>
+  <title>Timed Quiz App with Leaderboard</title>
   <style>
     body { font-family: Arial, sans-serif; background: #f4f4f9; padding: 20px; text-align: center; }
     .card { background: white; padding: 20px; border-radius: 12px; max-width: 600px; margin: auto; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
@@ -24,11 +24,13 @@
     .silver { color: silver; font-weight: bold; }
     .bronze { color: #cd7f32; font-weight: bold; }
     #progress { font-weight: bold; margin-bottom: 10px; }
+    #scoreDisplay { font-weight: bold; margin-bottom: 5px; }
+    #timer { font-weight: bold; color: #dc3545; }
   </style>
 </head>
 <body>
   <div class="card">
-    <h1>Enhanced Quiz App with Leaderboard</h1>
+    <h1>Timed Quiz App with Leaderboard</h1>
 
     <div id="editor">
       <h2>Create a Question</h2>
@@ -46,7 +48,9 @@
     <div id="quiz" class="hidden">
       <button id="startQuizBtn">Start Quiz</button>
       <div id="questionContainer" class="hidden">
+        <p id="scoreDisplay">Score: 0 / 0</p>
         <p id="progress"></p>
+        <p id="timer"></p>
         <p id="question"></p>
         <div id="options" class="options"></div>
         <div class="feedback" id="feedback"></div>
@@ -70,8 +74,10 @@
     let currentIndex = 0;
     let score = 0;
     let latestAttemptTimestamp = null;
-    const leaderboardEl = document.getElementById('leaderboard');
+    let timerInterval = null;
+    const timePerQuestion = 15; // seconds
 
+    const leaderboardEl = document.getElementById('leaderboard');
     const addBtn = document.getElementById('addQuestion');
     const generateLinkBtn = document.getElementById('generateLink');
     const questionText = document.getElementById('questionText');
@@ -84,6 +90,8 @@
     const startQuizBtn = document.getElementById('startQuizBtn');
     const questionContainer = document.getElementById('questionContainer');
     const progressEl = document.getElementById('progress');
+    const scoreDisplay = document.getElementById('scoreDisplay');
+    const timerEl = document.getElementById('timer');
     const questionEl = document.getElementById('question');
     const optionsDiv = document.getElementById('options');
     const nextBtn = document.getElementById('next');
@@ -186,15 +194,31 @@
     function startQuiz() {
       currentIndex = 0;
       score = 0;
+      scoreDisplay.textContent = `Score: ${score} / ${questions.length}`;
       feedbackEl.textContent = '';
       nextBtn.classList.add('hidden');
       showQuestion();
     }
 
+    function startTimer(callback) {
+      let timeLeft = timePerQuestion;
+      timerEl.textContent = `Time: ${timeLeft}s`;
+      clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        timeLeft--;
+        timerEl.textContent = `Time: ${timeLeft}s`;
+        if(timeLeft <= 0){
+          clearInterval(timerInterval);
+          callback();
+        }
+      }, 1000);
+    }
+
     function showQuestion() {
       feedbackEl.textContent = '';
-      const q = questions[currentIndex];
       progressEl.textContent = `Question ${currentIndex + 1} of ${questions.length}`;
+      scoreDisplay.textContent = `Score: ${score} / ${questions.length}`;
+      const q = questions[currentIndex];
       questionEl.textContent = q.question;
       optionsDiv.innerHTML = '';
       const shuffled = [...q.options];
@@ -203,25 +227,30 @@
         const btn = document.createElement('button');
         btn.textContent = opt;
         btn.className = 'option-btn';
-        btn.onclick = () => selectAnswer(opt, q.answer, btn);
+        btn.onclick = () => selectAnswer(opt, q.answer, btn, true);
         optionsDiv.appendChild(btn);
       });
       nextBtn.classList.add('hidden');
+
+      // Start timer for this question
+      startTimer(() => selectAnswer(null, q.answer, null, false)); // Auto wrong if time runs out
     }
 
-    function selectAnswer(selected, correct, btn) {
+    function selectAnswer(selected, correct, btn, manual=true) {
+      clearInterval(timerInterval);
       const buttons = optionsDiv.querySelectorAll('button');
       buttons.forEach(b => b.disabled = true);
       if(selected === correct){
-        score++;
+        if(manual) score++;
         feedbackEl.textContent = '✅ Correct!';
-        btn.classList.add('correct');
+        if(btn) btn.classList.add('correct');
       } else {
-        feedbackEl.textContent = `❌ Wrong! Correct: ${correct}`;
-        btn.classList.add('wrong');
+        feedbackEl.textContent = selected===null ? `⏰ Time's up! Correct: ${correct}` : `❌ Wrong! Correct: ${correct}`;
+        if(btn) btn.classList.add('wrong');
         // Highlight correct answer
         buttons.forEach(b => { if(b.textContent === correct) b.classList.add('correct'); });
       }
+      scoreDisplay.textContent = `Score: ${score} / ${questions.length}`;
       nextBtn.classList.remove('hidden');
     }
 
